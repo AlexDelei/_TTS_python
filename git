@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# automating git on the terminal
+
+# Usage: ./git <file_1> <file_2> ... <commit message>
+
+if [ "$#" -lt 2 ]; then
+	echo "Usage: ./git <file_1> <file_2> ... <commit message>"
+	exit 1
+fi
+
+# extracting commit message(last argument)
+commit_msg="${!#}"
+
+# checking if the last argument is a valid commit message
+if [ -e "$commit_msg" ]; then
+	echo "Error: the last argument should be a commit message, not a file"
+	exit 1
+fi
+
+# Looping through the provided files and adding them to the index
+
+# color code for a warning message
+files_not_found=()
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NONE='\033[0m'
+commit_hash=$(git rev-parse HEAD)
+commit_author=$(git show -s --format='%an'"$commit_hash")
+commit_date=$(git show -s --format='%cd' --date=format:'%Y-%m-%d %H:%M' "$commit_hash")
+change_details=$(git show --stat "$commit_hash")
+deltas_details=$(git show --details "$commit_hash")
+for ((i = 1; i <= $# - 1; i ++)); do
+	file="${!i}"
+
+	if [ "$file" == "." ]; then
+		git add .
+		break
+	elif [ -e "$file" ]; then
+		git add "$file"
+	else
+		files_not_found+=("$file")
+	fi
+done
+if [ "${#files_not_found[@]}" -gt 0 ]; then
+	echo -e "${RED} Files not found: ${NONE}"
+	for fnf in "${files_not_found[@]}"; do
+		echo "  $fnf"
+	done
+	exit 1
+else
+	git commit -m "$commit_msg"
+	echo -e "${BLUE}Committed changes with message: '$commit_msg'${NONE}"
+	echo -e "${GREEN}Commit Hash ->${NONE}  $commit_hash"
+	echo -e "${GREEN}Author ->${NONE}  $commit_author"
+	echo -e "${GREEN}Date ->${NONE}  $commit_date"
+	echo -e "${GREEN}Changes ->${NONE}  $change_details"
+	echo -e "${GREEN}Deltas ->${NONE}  $deltas_details"
+	git push origin master
+	exit 1
+fi
